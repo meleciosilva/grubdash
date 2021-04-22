@@ -40,13 +40,68 @@ function dishesPropertyIsValid(req, res, next) {
   }
   dishes.map((dish, index) => {
     let regex = /^[0-9]*$/g
-    if (!dish.quantity || dish.quantity <= 0 || !dish.quantity.match(regex)) {
+    if (!dish.quantity || dish.quantity <= 0 || regex.test(dish.quantity) === false || typeof dish.quantity !== 'number' ) {
       next({
         status: 400,
-        message: `Dish ${index + 1} must have a quantity that is an integer greater than 0`
+        message: `Dish ${index} must have a quantity that is an integer greater than 0`
       })
     }
   })
+  next();
+}
+
+function orderExists(req, res, next) {
+  const { orderId } = req.params;
+  const foundOrder = orders.find(order => order.id === orderId);
+  if (foundOrder) {
+    res.locals.order = foundOrder;
+    return next();
+  }
+  next({
+    status: 404,
+    message: `Order does not exist: ${orderId}`
+  })
+}
+
+function orderIdMatchesBodyId(req, res, next) {
+  const { orderId } = req.params;
+  const { data: { id } = {}} = req.body;
+  if (!id) return next();
+  if (orderId !== id) {
+    next ({
+      status: 400,
+      message: `Order id does not match route id. Order: ${id}, Route: ${orderId}`
+    })
+  }
+  next();
+}
+
+function statusPropertyValid(req, res, next) {
+  const { data: { status } = {} } = req.body;
+  const validStatus = ["pending", "preparing", "out-for-delivery", "delivered"];
+  if (!status || !status.trim() || !validStatus.includes(status)) {
+    return next({
+      status: 400,
+      message: `Order must have a status of pending, preparing, out-for-delivery, delivered`
+    })
+  }
+  if (status === 'delivered') {
+    return next({
+      status: 400,
+      message: "A delivered order cannot be changed"
+    })
+  }
+  return next();
+}
+
+function statusPropertyPending(req, res, next) {
+  const order = res.locals.order;
+  if (order.status !== 'pending') {
+    next ({
+      status: 400,
+      message: `An order cannot be deleted unless it is pending`      
+    })
+  }
   next();
 }
 
@@ -61,13 +116,48 @@ function create(req, res) {
     id: nextId(), // Increment last id then assign as the current ID
     deliverTo,
     mobileNumber,
+    status: "pending",
     dishes
   }
   orders.push(newOrder);
   res.status(201).json({ data: newOrder });
 }
 
+function read(req, res) {
+  res.json({ data: res.locals.order });
+}
+
+function update(req, res) {
+  const order = res.locals.order;
+  const { data: { deliverTo, mobileNumber, status, dishes } } = req.body;
+  if (order.deliverTo !== deliverTo) {
+    order.deliverTo = deliverTo;
+  }
+  if (order.mobileNumber !== mobileNumber) {
+    order.mobileNumber = mobileNumber;
+  }
+  if (status.mobileNumber !== status) {
+    status.mobileNumber = status;
+  }
+  if (order.dishes !== dishes) {
+    order.dishes = dishes;
+  }
+
+  res.json({ data: order });
+
+}
+
+function destroy(req, res) {
+  const order = res.locals.order;
+  const index = orders.indexOf(order);
+  orders.splice(index, 1);
+  res.sendStatus(204);
+}
+
 module.exports = {
   list,
   create: [bodyHasAllProperties, dishesPropertyIsValid, create],
+  read: [orderExists, read],
+  update: [orderExists, bodyHasAllProperties, orderIdMatchesBodyId, dishesPropertyIsValid, statusPropertyValid, update],
+  destroy: [orderExists, statusPropertyPending, destroy]
 }
