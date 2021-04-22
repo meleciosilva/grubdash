@@ -21,7 +21,7 @@ function bodyHasAllProperties(req, res, next) {
       message: "Dish must include a description"
     })
   } 
-  if (!price || !price.trim()) {
+  if (!price || price === "") {
     next({
       status: 400,
       message: "Dish must include a price"
@@ -32,14 +32,14 @@ function bodyHasAllProperties(req, res, next) {
       status: 400,
       message: "Dish must include a image_url"
     })
-  }
+  } 
   return next();
 }
 
 function pricePropertyIsValid(req, res, next) {
   const { data: { price } } = req.body;
   let regex = /^[0-9]*$/g
-  if (price <= 0 || !price.match(regex)) {
+  if (price <= 0 || regex.test(price) === false || typeof price !== 'number') {
     next({
       status: 400,
       message: `Dish must have a price that is an integer greater than 0`
@@ -67,7 +67,7 @@ function dishIdMatchesBodyId(req, res, next) {
   if (!id) return next();
   if (dishId !== id) {
     next ({
-      status: 404,
+      status: 400,
       message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}`
     })
   }
@@ -98,7 +98,7 @@ function read(req, res) {
 
 function update(req, res, next) {
   const dish = res.locals.dish;
-  const { data: { id, name, description, price, image_url } } = req.body;
+  const { data: { name, description, price, image_url } } = req.body;
   if (dish.name !== name) {
     dish.name = name;
   }
@@ -121,5 +121,5 @@ module.exports = {
   list,
   create: [bodyHasAllProperties, pricePropertyIsValid, create],
   read: [dishExists, read],
-  update: [dishExists, bodyHasAllProperties, pricePropertyIsValid, dishIdMatchesBodyId, update],
+  update: [dishExists, bodyHasAllProperties, dishIdMatchesBodyId, pricePropertyIsValid, update],
 }
