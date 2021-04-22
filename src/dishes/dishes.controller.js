@@ -9,25 +9,25 @@ const nextId = require("../utils/nextId");
 // validation middleware
 function bodyHasAllProperties(req, res, next) {
   const { data: { name, description, price, image_url } = {} } = req.body;
-  if (name == "") {
+  if (!name || !name.trim()) {
     next({
       status: 400,
       message: "Dish must include a name"
     })
   }
-  if (description == "") {
+  if (!description || !description.trim()) {
     next({
       status: 400,
       message: "Dish must include a description"
     })
   } 
-  if (price == "") {
+  if (!price || !price.trim()) {
     next({
       status: 400,
       message: "Dish must include a price"
     })
   }
-  if (image_url == "") {
+  if (!image_url || !image_url.trim()) {
     next({
       status: 400,
       message: "Dish must include a image_url"
